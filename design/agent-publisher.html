@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morse Agent Publisher: agents publish, you keep the key</title>
+<meta name="description" content="A recipe for the Morse CLI and SDK: give an AI agent its own wallet and a PublisherCap for one publication. It publishes on its own, every write returns a digest, and one command revokes it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* ===== tokens: Morse Agent Publisher, the Process Magenta palette (src/styles/tokens.css) ===== */
+:root{--bg:#0A070A;--bg-rgb:10,7,10;--panel-rgb:17,12,17;--dim:#C4BAC2;--mute:#9B8F99;--acc:#FF3EA5;--acc-rgb:255,62,165;--lift:#FF9BCF;--lift-rgb:255,155,207;--tint-rgb:255,221,238;--em:var(--acc);--on-acc:#0A070A;--ok:#6FD3A6;--warn:#F0C96A}
+
+/* ===== shared base: src/styles/base.css from arcadiasystems/morse-receipts, inlined verbatim. Do not edit. ===== */
+/* Morse product sites: the shared dark base.
+
+   This file is identical in morse-receipts, morse-agents and morse-press. It
+   is written once in morse-receipts and copied verbatim into the other two.
+   Do not edit a copy: change it in morse-receipts and copy it again, so the
+   three never drift.
+
+   Token contract. Every site sets these in its own src/styles/tokens.css,
+   loaded before this file:
+
+     --bg         the field                     --bg-rgb     the field, as r,g,b
+     --panel-rgb  solid panels, as r,g,b        --dim        body text
+     --mute       captions                      --acc        the site's colour
+     --acc-rgb    the same, as r,g,b            --lift       labels, tape, numbers
+     --lift-rgb   the same, as r,g,b            --tint-rgb   the palest accent, as r,g,b
+     --em         the emphasised headline clause
+     --on-acc     text on the accent            --ok         live, passed
+     --warn       sample labels
+
+   What is here is what the three designs have in common, rule for rule:
+   reset, .wrap, .lab, .thin, .lead, .btn, .pill, .glass, .sec, .sec__head,
+   .glow, the nav, the hero frame, .status with its tape, .band, .faq, .final
+   with .gtile, the footer and .fine. Everything else is a site's own object
+   and lives in src/styles/<site>.css, loaded after this file.
+
+   Cascade note for the site stylesheets: this file ends with the shared
+   responsive rules. A site rule outside a media query that sets a property
+   this file changes at 860px (for example .hero padding or .hero__grid
+   columns) wins over it, so that site restates the 860px value in its own
+   media block. */
+
+:root{--text:#F4F2EC;
+  --line:rgba(255,255,255,.09);--line-2:rgba(255,255,255,.17);--glass:rgba(255,255,255,.04);--glass-2:rgba(255,255,255,.07);
+  --disp:'Bricolage Grotesque',system-ui,sans-serif;--sans:'Instrument Sans',system-ui,sans-serif;--mono:'IBM Plex Mono',ui-monospace,monospace;--max:1200px;--gut:32px}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}h1,h2,h3,p,ul,ol{margin:0}ul,ol{padding:0;list-style:none}button{font:inherit;color:inherit}svg{display:block}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+.lab{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--lift)}
+.lab::before{content:"// "}
+.thin{font-family:var(--disp);font-weight:400;letter-spacing:-.035em;line-height:1}
+.thin em{font-style:normal;color:var(--em)}
+h2.thin{font-size:clamp(34px,4.6vw,62px)}
+.lead{font-size:18px;color:var(--dim);max-width:54ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:0 22px;border-radius:999px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:500;white-space:nowrap;border:1px solid transparent;cursor:pointer;transition:transform .15s,background .15s,border-color .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-bone{background:var(--text);color:var(--bg)}
+.btn-ghost{border-color:var(--line-2);color:var(--text);background:rgba(255,255,255,.02)}
+.btn-ghost:hover{border-color:rgba(255,255,255,.4)}
+.btn-acc{background:var(--acc);color:var(--on-acc)}
+.pill{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;border-radius:999px;padding:5px 10px;border:1px solid var(--line-2);color:var(--dim);white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:rgba(111,211,166,.4);background:rgba(111,211,166,.08)}
+.pill.sample{color:var(--warn);border-color:rgba(240,201,106,.4);background:rgba(240,201,106,.07)}
+.pill.lift{color:var(--lift);border-color:rgba(var(--lift-rgb),.45);background:rgba(var(--lift-rgb),.09)}
+.glass{background:var(--glass);border:1px solid var(--line);border-radius:22px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+section{position:relative}
+.sec{padding:128px 0;overflow:hidden}
+.sec__head{display:flex;flex-direction:column;gap:18px;margin-bottom:48px}
+.sec__head.c{align-items:center;text-align:center}
+.glow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(90px);background:var(--acc);opacity:.30}
+
+/* nav */
+.nav{position:fixed;top:0;left:0;right:0;z-index:50;background:linear-gradient(180deg,rgba(var(--bg-rgb),.92),rgba(var(--bg-rgb),0))}
+.nav .wrap{height:76px;display:flex;align-items:center;gap:28px}
+.brand{display:inline-flex;align-items:center;gap:11px;font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:-.03em;line-height:.92}
+.brand .wm{display:flex;flex-direction:column}.brand em{font-style:normal;color:var(--lift)}
+.nav__links{display:flex;gap:26px;font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.nav__links a{min-height:44px;display:inline-flex;align-items:center}
+.nav__links a:hover{color:var(--text)}
+.nav__r{margin-left:auto;display:flex;gap:10px;align-items:center}
+.nav .btn{min-height:42px;padding:0 18px;font-size:11.5px}
+
+/* hero */
+.hero{min-height:100svh;padding:150px 0 90px;display:flex;align-items:center;overflow:hidden}
+.hero .glow.a{width:620px;height:620px;left:-240px;top:-160px}
+.hero .glow.b{width:520px;height:520px;right:-120px;bottom:-220px;opacity:.5}
+.hero__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:center;position:relative}
+.hero__l{display:flex;flex-direction:column;gap:26px;align-items:flex-start;min-width:0}
+.status{display:inline-flex;align-items:stretch;height:36px;border-radius:10px;border:1px solid var(--line-2);background:rgba(var(--panel-rgb),.7);font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--dim);white-space:nowrap;overflow:hidden}
+.status>span{display:inline-flex;align-items:center;padding:0 12px;border-left:1px solid var(--line)}
+.status>span:first-child{border-left:0;gap:9px;color:var(--ok)}
+.status i.lamp{position:relative;width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px rgba(111,211,166,.9)}
+.status i.lamp::after{content:"";position:absolute;inset:-1px;border-radius:50%;border:1.5px solid var(--ok);animation:ping 2s ease-out infinite}
+@keyframes ping{from{transform:scale(1);opacity:.9}to{transform:scale(3.4);opacity:0}}
+.status .net{color:var(--text)}
+.status>.tp{width:90px;padding:0;overflow:hidden;color:var(--lift);-webkit-mask-image:linear-gradient(90deg,transparent,#000 24%,#000 76%,transparent);mask-image:linear-gradient(90deg,transparent,#000 24%,#000 76%,transparent)}
+.run{display:inline-flex;align-items:center;flex-shrink:0;animation:tape 9s linear infinite}
+.run i{display:block;flex-shrink:0;width:5px;height:5px;margin-right:3px;border-radius:50%;background:currentColor}
+.run i.d{width:13px;border-radius:3px}.run i.s{width:6px;background:none}.run i.w{width:20px;background:none}
+@keyframes tape{to{transform:translateX(-50%)}}
+.hero h1{font-size:clamp(46px,6.4vw,92px)}
+.hero p.sub{font-size:clamp(17px,1.5vw,20px);color:var(--dim);max-width:520px}
+.hero__cta{display:flex;gap:12px;flex-wrap:wrap}
+.hero__fine{font-size:14.5px;color:var(--mute)}
+.hero__fine a{color:var(--text);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--lift)}
+/* developers band, faq, final, footer */
+.band{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px 32px;align-items:center;padding:30px 34px}
+.band b{font-family:var(--disp);font-weight:500;font-size:26px;letter-spacing:-.03em;display:block;line-height:1.08}
+.band p{color:var(--dim);font-size:16px;margin-top:6px;max-width:60ch}
+.runs{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.faq{border-top:1px solid var(--line);max-width:900px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:24px 2px;min-height:52px;font-family:var(--disp);font-weight:400;font-size:24px;letter-spacing:-.025em}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--mono);font-size:22px;color:var(--lift);flex-shrink:0}
+.faq details[open] summary::after{content:"\2212"}
+.faq p{font-size:16.5px;color:var(--dim);padding:0 2px 26px;max-width:70ch}
+.final{padding:150px 0 160px;text-align:center;overflow:hidden}
+.final .glow{width:1000px;height:340px;left:50%;bottom:-200px;transform:translateX(-50%);opacity:.6}
+.final h2{font-size:clamp(46px,7vw,104px)}
+.final .hero__cta{justify-content:center;margin-top:36px}
+.gtile{position:absolute;width:128px;height:128px;border-radius:30px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);background:linear-gradient(145deg,rgba(var(--lift-rgb),.3),rgba(var(--acc-rgb),.1) 46%,rgba(255,255,255,.04));box-shadow:inset 0 1px 0 rgba(255,255,255,.36),0 30px 80px rgba(var(--acc-rgb),.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.gtile.l{left:7%;top:26%;transform:rotate(-14deg)}.gtile.r{right:8%;top:44%;transform:rotate(12deg);width:104px;height:104px;border-radius:26px}
+.foot{border-top:1px solid var(--line);padding:34px 0 44px}
+.foot .wrap{display:flex;justify-content:space-between;gap:20px 40px;flex-wrap:wrap;align-items:center}
+.foot__links{display:flex;gap:6px 24px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.foot__links a{min-height:40px;display:inline-flex;align-items:center}
+.foot__links a:hover{color:var(--text)}
+.foot p{font-size:13.5px;color:var(--mute);width:100%}
+.fine{font-size:13.5px;color:var(--mute);margin-top:18px}
+
+/* A section that follows another without top padding. The scroll margin
+   keeps its heading clear of the fixed nav after a nav jump. */
+.sec.flush{padding-top:0;scroll-margin-top:112px}
+
+@media (prefers-reduced-motion:reduce){.run,.status i.lamp::after{animation:none}}
+@media (max-width:1080px){.nav__links{display:none}}
+@media (max-width:860px){
+  :root{--gut:20px}
+  .sec{padding:84px 0}.sec__head{margin-bottom:32px}
+  .nav .btn-ghost{display:none}
+  .hero{padding:118px 0 64px}
+  .hero__grid{grid-template-columns:1fr;gap:40px}
+  .hero__cta{width:100%}.hero__cta .btn{flex:1 1 100%}
+  .status>span:nth-child(3){display:none}
+  .final{padding:110px 0 120px}.gtile{display:none}
+}
+
+/* ===== site block: Morse Agent Publisher (src/styles/agent-publisher.css). Everything below is this site's own. ===== */
+/* sibling colours, used only on the two sibling lockups */
+:root{--agents:#C6F135;--press:#FF5A36}
+:focus-visible{outline:2px solid var(--lift);outline-offset:3px;border-radius:6px}
+.glow{opacity:.2}
+.pill.dash{border-style:dashed}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:start}
+code,pre{font-family:var(--mono)}
+.hero .glow.b{width:440px;height:440px;right:-120px;bottom:-240px}
+.hero h1{font-size:clamp(46px,5.15vw,74px)}
+.hero__grid{width:100%}
+
+/* hero: the cap on its leash */
+.leash{position:relative;height:580px;min-width:0}
+.leash__in{position:absolute;right:0;top:0;width:520px;height:580px;perspective:1500px;transform-origin:100% 0}
+.owner{position:absolute;left:0;top:18px;width:188px;padding:14px 16px;border-radius:16px;background:rgba(var(--panel-rgb),.9);border:1px solid var(--line-2);display:flex;flex-direction:column;gap:3px;z-index:2}
+.owner small{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--mute)}
+.owner b{font-family:var(--disp);font-weight:500;font-size:22px;letter-spacing:-.02em;line-height:1.1}
+.owner span{font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+.cord{position:absolute;left:0;top:0;width:520px;height:548px;overflow:visible;pointer-events:none}
+.cord path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.cord .c0{stroke:rgba(255,255,255,.22);stroke-width:3;animation:cut 12s linear infinite}
+.cord .c1{stroke:var(--acc);stroke-width:3;stroke-dasharray:3 12 26 340;filter:drop-shadow(0 0 6px rgba(var(--acc-rgb),.9));animation:key 2.4s linear infinite,gone 12s linear infinite}
+@keyframes key{from{stroke-dashoffset:381}to{stroke-dashoffset:0}}
+@keyframes cut{0%,60%{stroke-dasharray:1 0}62%,94%{stroke-dasharray:2 9}96%,100%{stroke-dasharray:1 0}}
+@keyframes gone{0%,60%{opacity:1}62%,94%{opacity:0}96%,100%{opacity:1}}
+.hang{position:absolute;left:206px;top:112px;width:300px;transform-origin:50% 0;transform-style:preserve-3d;animation:swing 7s ease-in-out infinite alternate}
+@keyframes swing{from{transform:rotateZ(-1.4deg)}to{transform:rotateZ(1.6deg)}}
+.capc{position:relative;border-radius:24px;padding:38px 24px 24px;border:1px solid rgba(255,255,255,.26);background:linear-gradient(158deg,rgba(var(--lift-rgb),.34),rgba(var(--acc-rgb),.15) 44%,rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 50px 110px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transform-origin:50% 0;transform:rotateY(-21deg) rotateX(7deg);display:flex;flex-direction:column;gap:14px;animation:dead 12s linear infinite}
+@keyframes dead{0%,60%{filter:none}62%,94%{filter:grayscale(1) brightness(.72)}96%,100%{filter:none}}
+.capc::before{content:"";position:absolute;left:50%;top:12px;width:46px;height:10px;margin-left:-23px;border-radius:5px;background:rgba(var(--bg-rgb),.9);box-shadow:inset 0 1px 2px rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.25)}
+.capc__hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.st{position:relative;display:inline-grid}
+.st .pill{grid-area:1/1;justify-self:end}
+.st .pill.off{color:var(--text);border-color:rgba(255,255,255,.5);opacity:0;animation:stoff 12s linear infinite}
+.st .pill.ok{animation:ston 12s linear infinite}
+@keyframes ston{0%,60%{opacity:1}62%,94%{opacity:0}96%,100%{opacity:1}}
+@keyframes stoff{0%,60%{opacity:0}62%,94%{opacity:1}96%,100%{opacity:0}}
+.capc small{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--dim)}
+.capc h3{font-family:var(--disp);font-weight:500;font-size:28px;letter-spacing:-.03em;line-height:1.04;margin-top:-6px}
+.capc ul{border-top:1px dashed rgba(255,255,255,.3)}
+.capc li{display:flex;align-items:baseline;gap:8px;padding:9px 0;border-bottom:1px dashed rgba(255,255,255,.3);font-size:14px}
+.capc li span{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);flex-shrink:0}
+.capc li b{font-weight:500;margin-left:auto;text-align:right}
+.da{display:flex;align-items:center;justify-content:flex-end;gap:9px;height:16px;margin-top:4px}
+.da i{display:block;height:14px;border-radius:7px;background:var(--acc);box-shadow:0 0 26px rgba(var(--acc-rgb),.9)}
+.da i:first-child{width:14px}
+.da i:last-child{width:120px;transform-origin:0 50%;animation:wrote 12s cubic-bezier(.2,.8,.2,1) infinite}
+@keyframes wrote{0%,26%{transform:scaleX(.1)}34%,100%{transform:scaleX(1)}}
+.da small{margin-left:auto}
+.life{position:absolute;left:0;bottom:0;width:272px;padding:14px 16px;border-radius:16px;background:rgba(var(--panel-rgb),.9);border:1px solid var(--line-2);box-shadow:0 30px 70px rgba(0,0,0,.6);z-index:3}
+.life__hd{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);padding-bottom:8px;border-bottom:1px solid var(--line)}
+.life li{display:grid;grid-template-columns:88px minmax(0,1fr);gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;opacity:.64}
+.life li:last-child{border-bottom:0;padding-bottom:0}
+.life code{font-size:12.5px;color:var(--lift)}
+.life li:nth-child(1){animation:s1 12s linear infinite}.life li:nth-child(2){animation:s2 12s linear infinite}.life li:nth-child(3){animation:s3 12s linear infinite}
+@keyframes s1{0%,4%{opacity:.64}8%,96%{opacity:1}100%{opacity:.64}}
+@keyframes s2{0%,26%{opacity:.64}30%,96%{opacity:1}100%{opacity:.64}}
+@keyframes s3{0%,58%{opacity:.64}62%,96%{opacity:1}100%{opacity:.64}}
+.leash .pill.sample{position:absolute;right:0;bottom:0}
+
+/* why: the form that is not there */
+.why{padding:120px 0 128px;overflow:hidden}
+.why h2{max-width:920px;margin-top:18px}
+.nogate{display:grid;grid-template-columns:minmax(0,.92fr) 72px minmax(0,1.08fr);align-items:center;margin:52px 0 44px}
+.ghost{border:1.5px dashed var(--line-2);border-radius:22px;padding:26px;display:flex;flex-direction:column;gap:12px;position:relative}
+.ghost__cap{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--mute)}
+.ghost p{border:1.5px dashed var(--line-2);border-radius:12px;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ghost p s{font-family:var(--disp);font-size:clamp(20px,2.2vw,27px);letter-spacing:-.025em;line-height:1.1;color:var(--mute);text-decoration-thickness:2px;text-decoration-color:rgba(var(--acc-rgb),.85)}
+.ghost p small{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);white-space:nowrap}
+.ghost__btn{align-self:flex-start;margin-top:4px;min-height:44px;padding:0 20px;border-radius:999px;border:1.5px dashed var(--line-2);display:inline-flex;align-items:center;font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.ghost__btn s{text-decoration-thickness:2px;text-decoration-color:rgba(var(--acc-rgb),.85)}
+.nogate__to{justify-self:center;display:flex;align-items:center;gap:6px}
+.nogate__to i{display:block;height:8px;border-radius:4px;background:var(--acc)}
+.nogate__to i:first-child{width:8px}.nogate__to i:last-child{width:30px}
+.three{border-top:1px solid var(--line)}
+.three li{display:grid;grid-template-columns:54px minmax(0,1fr);gap:6px 10px;padding:20px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.three .n{font-family:var(--mono);font-size:12px;color:var(--lift)}
+.three b{font-family:var(--disp);font-weight:400;font-size:clamp(28px,3.4vw,46px);letter-spacing:-.035em;line-height:1}
+.three span.d{grid-column:2;font-size:16px;color:var(--dim)}
+.why .after{font-size:clamp(24px,2.8vw,38px);max-width:900px;line-height:1.12}
+
+/* kit: the three files you hand over */
+.kit{overflow:hidden}
+.kit__bar{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.kit__tabs{display:flex;gap:6px;flex-wrap:wrap}
+.ftab{display:inline-flex;align-items:center;gap:9px;border:1px solid transparent;background:transparent;border-radius:10px;min-height:42px;padding:0 16px;font-family:var(--mono);font-size:13px;color:var(--mute);cursor:pointer}
+.ftab i{width:8px;height:8px;border-radius:2px;background:var(--line-2)}
+.ftab.is-on{background:var(--glass-2);border-color:var(--line-2);color:var(--text)}
+.ftab.is-on i{background:var(--acc)}
+.copy{margin-left:auto;border:1px solid var(--line-2);background:rgba(255,255,255,.02);border-radius:999px;min-height:40px;padding:0 16px;font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.copy:hover{border-color:rgba(255,255,255,.4)}
+.kit__pane{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
+.kit__pane[hidden]{display:none}
+.kit pre{margin:0;padding:26px 28px;font-size:13px;line-height:1.8;white-space:pre;overflow-x:auto;color:var(--text);border-right:1px solid var(--line);background:rgba(var(--bg-rgb),.5)}
+.kit pre .c{color:var(--mute)}
+.kit pre mark{background:rgba(var(--acc-rgb),.16);color:var(--text);box-shadow:-6px 0 0 rgba(var(--acc-rgb),.16),6px 0 0 rgba(var(--acc-rgb),.16);border-radius:2px}
+.kit pre sup{font-size:11px;color:var(--lift);margin-left:8px;vertical-align:baseline}
+.notes{padding:14px 28px}
+.notes li{display:grid;grid-template-columns:36px minmax(0,1fr);gap:4px;padding:16px 0;border-bottom:1px solid var(--line)}
+.notes li:last-child{border-bottom:0}
+.notes .n{font-family:var(--mono);font-size:12px;color:var(--lift);padding-top:4px}
+.notes b{font-family:var(--disp);font-weight:500;font-size:20px;letter-spacing:-.02em;display:block;line-height:1.15}
+.notes span.d{font-size:15.5px;color:var(--dim)}
+.fine{font-size:13.5px;color:var(--mute);margin-top:18px}
+.fine a,.lead a,.faq p a,.notes a,.keeps a,.limits a{color:var(--text);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--lift)}
+
+/* run: two machines, two keys */
+.lanes{position:relative}
+.lanes__hd{display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);margin-bottom:10px}
+.lanes__hd div{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;color:var(--dim)}
+.lanes__hd div:last-child{grid-column:3}
+.lanes__hd small{font-size:11px;letter-spacing:.1em;color:var(--mute)}
+.keydot{display:inline-block;width:12px;height:12px;border-radius:50%;border:3px solid var(--text);flex-shrink:0}
+.keydot.a{border-color:var(--acc);box-shadow:0 0 12px rgba(var(--acc-rgb),.8)}
+.lanes ol{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr);row-gap:12px}
+.lanes ol::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:repeating-linear-gradient(180deg,var(--line-2) 0 6px,transparent 6px 12px)}
+.step{position:relative;grid-column:1;border:1px solid var(--line);border-radius:18px;background:var(--glass);padding:18px 20px;min-width:0}
+.step.it{grid-column:3;border-color:rgba(var(--acc-rgb),.34);background:linear-gradient(120deg,rgba(var(--acc-rgb),.1),rgba(var(--acc-rgb),.02) 60%)}
+.step::before{content:attr(data-n);position:absolute;top:18px;right:-48px;width:32px;height:32px;border-radius:50%;background:var(--bg);border:2px solid var(--text);display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:var(--text)}
+.step.it::before{right:auto;left:-48px;border-color:var(--acc);color:var(--lift)}
+.step::after{content:"";position:absolute;top:33px;right:-16px;width:16px;height:2px;background:var(--line-2)}
+.step.it::after{right:auto;left:-16px;background:rgba(var(--acc-rgb),.6)}
+.step .who{display:none}
+.r1{grid-row:1}.r2{grid-row:2}.r3{grid-row:3}.r4{grid-row:4}.r5{grid-row:5}.r23{grid-row:2/4}.r45{grid-row:4/6}
+.idle{grid-column:3;border:1.5px dashed var(--line);border-radius:18px;display:grid;place-items:center;text-align:center;padding:16px 28px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;line-height:1.8;color:var(--mute)}
+.idle.l{grid-column:1}
+.step p{font-size:16px;color:var(--dim)}
+.step p b{color:var(--text);font-weight:500}
+.step pre{margin:12px 0 0;padding:12px 14px;border-radius:12px;background:rgba(var(--bg-rgb),.75);border:1px solid var(--line);font-size:12.5px;line-height:1.7;white-space:pre;overflow-x:auto;color:var(--text)}
+.step pre .p{color:var(--mute)}
+.step.it pre .p{color:var(--acc)}
+.step pre .c{color:var(--mute)}
+
+/* audit: who signed what */
+.txs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;position:relative}
+.tx{position:relative;border-radius:18px;border:1px solid var(--line-2);background:rgba(var(--panel-rgb),.86);padding:16px;display:flex;flex-direction:column;gap:8px;min-height:190px;min-width:0}
+.tx::after{content:"";position:absolute;right:-11px;top:26px;width:11px;height:2px;background:var(--line-2)}
+.tx:last-child::after{display:none}
+.tx__by{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--dim)}
+.tx code{font-size:14px;color:var(--text)}
+.tx p{font-size:14.5px;color:var(--dim)}
+.tx__dg{margin-top:auto;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--lift);border-top:1px dashed var(--line-2);padding-top:10px}
+.tx.agent{border-color:rgba(var(--acc-rgb),.4);background:linear-gradient(160deg,rgba(var(--acc-rgb),.14),rgba(var(--panel-rgb),.86) 62%)}
+.tx.cut{border-color:var(--text)}
+.tx.cut .tx__dg{color:var(--text)}
+.tx.no{border-style:dashed;background:transparent}
+.tx.no code{color:var(--mute);text-decoration:line-through;text-decoration-color:rgba(var(--acc-rgb),.85);text-decoration-thickness:2px}
+.tx.no .tx__dg{color:var(--mute)}
+.keeps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:40px;border-top:1px solid var(--line)}
+.keeps div{padding:22px 28px 0 0}
+.keeps div+div{padding-left:28px;border-left:1px solid var(--line)}
+.keeps b{font-family:var(--disp);font-weight:500;font-size:21px;letter-spacing:-.02em;display:block;line-height:1.15}
+.keeps span{display:block;font-size:15.5px;color:var(--dim);margin-top:6px}
+
+/* scope: two keys */
+.keys{display:flex;flex-direction:column;gap:26px}
+.key{display:grid;grid-template-columns:168px minmax(0,1fr);align-items:center;--k:var(--text);--kr:244,242,236}
+.key.a{--k:var(--acc);--kr:var(--acc-rgb)}
+.key__bow{position:relative;width:168px;height:168px;border-radius:50%;border:16px solid var(--k);display:grid;place-items:center;text-align:center;box-shadow:0 0 0 1px rgba(0,0,0,.4),0 0 60px rgba(var(--kr),.25)}
+.key__bow small{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--dim);display:block}
+.key__bow b{font-family:var(--disp);font-weight:500;font-size:19px;letter-spacing:-.02em;display:block;line-height:1.1}
+.key__blade{position:relative;margin-left:-3px;border:2px solid var(--k);border-left:0;border-radius:0 18px 18px 0;background:linear-gradient(90deg,rgba(var(--kr),.14),rgba(var(--kr),.03));padding:18px 22px 18px 26px}
+.key__blade h3{font-family:var(--disp);font-weight:400;font-size:clamp(22px,2.4vw,30px);letter-spacing:-.03em;line-height:1.05}
+.key__blade ul{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.key__blade li{font-family:var(--mono);font-size:12.5px;border:1px solid rgba(var(--kr),.45);border-radius:9px;padding:7px 11px;color:var(--text)}
+.key__teeth{position:absolute;left:26px;bottom:-14px;display:flex;gap:10px}
+.key__teeth i{display:block;width:22px;height:12px;background:var(--k);border-radius:0 0 5px 5px}
+.key__teeth i:nth-child(2n){height:8px}
+.else{margin-top:6px;padding:16px 20px;border:1.5px dashed var(--line-2);border-radius:16px;font-size:15.5px;color:var(--dim)}
+.else b{color:var(--text);font-weight:500}
+.dd{border-top:1px solid var(--line)}
+.dd li{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:17px 0;border-bottom:1px solid var(--line)}
+.dd b{font-family:var(--disp);font-weight:500;font-size:20px;letter-spacing:-.02em;line-height:1.15}
+.dd s{font-size:15.5px;color:var(--mute);text-decoration-color:rgba(var(--acc-rgb),.85);text-decoration-thickness:1.5px}
+.dd__hd{display:grid;grid-template-columns:1fr;font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--mute);padding-bottom:12px}
+
+/* the recipe card */
+.rcardbox{position:relative;display:grid;place-items:center;min-height:400px}
+.rcardbox .glow{width:min(420px,90%);height:360px;opacity:.3}
+.rcard{position:relative;width:min(460px,100%);border-radius:14px;border:1px solid rgba(255,255,255,.24);padding:20px 26px 12px;transform:rotate(-2deg);background:rgba(var(--panel-rgb),.92);box-shadow:0 40px 90px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.2)}
+.rcard__hd{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:14px;border-bottom:2px solid var(--acc)}
+.rcard__hd b{font-family:var(--disp);font-weight:500;font-size:24px;letter-spacing:-.03em}
+.rcard dl{margin:0}
+.rcard dl div{display:grid;grid-template-columns:104px minmax(0,1fr);gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.11);align-items:baseline}
+.rcard dl div:last-child{border-bottom:0}
+.rcard dt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--lift)}
+.rcard dd{margin:0;font-size:15px;line-height:1.4}
+.limits{border-top:1px solid var(--line);margin-top:30px}
+.limits li{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;padding:19px 0;border-bottom:1px solid var(--line)}
+.limits .n{font-family:var(--mono);font-size:12px;color:var(--lift);padding-top:5px}
+.limits b{font-family:var(--disp);font-weight:500;font-size:21px;letter-spacing:-.02em;display:block}
+.limits span.d{font-size:16px;color:var(--dim)}
+.bands{display:flex;flex-direction:column;gap:14px}
+
+@media (prefers-reduced-motion:reduce){
+  .hang,.capc,.cord .c0,.cord .c1,.da i:last-child,.st .pill{animation:none!important}
+  .life li{animation:none!important;opacity:1}
+}
+@media (max-width:1180px){.leash__in{transform:scale(.88)}.leash{height:512px}}
+@media (max-width:1080px){
+  .txs{grid-template-columns:repeat(2,minmax(0,1fr))}.tx{min-height:0}.tx::after{display:none}
+  .kit__pane{grid-template-columns:1fr}.kit pre{border-right:0;border-bottom:1px solid var(--line)}
+}
+@media (max-width:980px){.leash__in{transform:scale(.74)}.leash{height:432px}}
+@media (max-width:860px){
+  .two{grid-template-columns:1fr;gap:40px}
+  .leash{height:auto}
+  .leash__in{position:static;width:auto;height:auto;transform:none;perspective:none;display:flex;flex-direction:column;gap:14px}
+  .owner{position:relative;top:auto;width:100%;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+  .owner small{width:100%}
+  .cord{display:none}
+  .hang{position:relative;left:auto;top:auto;width:100%;animation:none}
+  .capc{transform:none;padding:34px 22px 22px}
+  .life{position:relative;left:auto;bottom:auto;width:100%}
+  .leash .pill.sample{position:static;align-self:flex-start}
+  .why{padding:84px 0}
+  .nogate{grid-template-columns:1fr;gap:22px;margin:36px 0 32px}
+  .nogate__to{justify-self:start;transform:rotate(90deg);margin:4px 0 4px 18px}
+  .ghost{padding:18px}
+  .ghost p small{display:none}
+  .three li{grid-template-columns:40px minmax(0,1fr)}
+  .ftab{padding:0 9px;font-size:12px;gap:7px}.kit__tabs{gap:2px}.kit__bar{padding:10px 8px}
+  .copy{margin-left:0;width:100%}
+  .kit pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;padding:20px}
+  .notes{padding:8px 20px}
+  .lanes__hd{grid-template-columns:1fr;gap:8px}
+  .lanes__hd div:last-child{grid-column:1}
+  .lanes ol{grid-template-columns:1fr}
+  .lanes ol::before{display:none}
+  .step,.step.it{grid-column:1;padding:16px}
+  .step::before,.step.it::before{left:16px;right:auto;top:13px;width:28px;height:28px}
+  .step::after,.step.it::after{display:none}
+  .step .who{margin-left:38px}
+  .step .who{display:inline-flex;margin-bottom:10px}
+  .idle{display:none}
+  .r1,.r2,.r3,.r4,.r5{grid-row:auto}
+  .step pre{font-size:11.5px;padding:11px}
+  .txs{grid-template-columns:1fr}
+  .keeps{grid-template-columns:1fr}
+  .keeps div,.keeps div+div{padding:20px 0;border-left:0;border-bottom:1px solid var(--line)}
+  .keys{gap:38px}
+  .key{grid-template-columns:1fr;justify-items:start}
+  .key__bow{width:112px;height:112px;border-width:12px}
+  .key__bow b{font-size:14px}.key__bow small{display:none}
+  .key__blade{margin:-3px 0 0;border-left:2px solid var(--k);border-radius:18px;padding:18px;width:100%}
+  .key__teeth{left:22px}
+  .rcardbox{min-height:0;padding:10px 0}
+  .rcard{padding:22px 20px 14px;transform:rotate(-1deg)}
+  .rcard dl div{grid-template-columns:86px minmax(0,1fr)}
+  .band{grid-template-columns:1fr;padding:24px 22px}.band .btn{width:100%}
+  .faq summary{font-size:20px}
+}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap">
+  <a class="brand" href="#top" aria-label="Morse Agent Publisher home"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 100 100"><path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="87" r="7" fill="#FF3EA5"/><rect x="30" y="80" width="62" height="14" rx="7" fill="#FF3EA5"/></svg><span class="wm"><span>morse</span><em>agent publisher</em></span></a>
+  <nav class="nav__links" aria-label="Primary"><a href="#kit">The handover</a><a href="#run">The commands</a><a href="#audit">Audit and revoke</a><a href="#scope">Scope</a><a href="#faq">Questions</a></nav>
+  <div class="nav__r"><a class="btn btn-ghost" href="https://www.morsecms.xyz/" data-link="morse">Morse <span aria-hidden="true">↗</span></a><a class="btn btn-bone" href="https://docs.morsecms.xyz/agent-publishes.html" data-cta="nav">Read the recipe <span aria-hidden="true">↗</span></a></div>
+</div></header>
+
+<main>
+<section class="hero" id="top">
+  <span class="glow a"></span><span class="glow b"></span>
+  <div class="wrap hero__grid">
+    <div class="hero__l">
+      <div class="status"><span><i class="lamp" aria-hidden="true"></i>DOCS RECIPE</span><span class="net">CLI OR SDK</span><span>ABOUT 15 MINUTES</span><span class="tp" aria-hidden="true"><span class="run"><i></i><i class="d"></i><i class="d"></i><i></i><i class="s"></i><i></i><i></i><i class="d"></i><i class="s"></i><i class="d"></i><i></i><i></i><i></i><i class="s"></i><i></i><i class="d"></i><i></i><i></i><i class="s"></i><i></i><i></i><i class="s"></i><i></i><i></i><i></i><i class="s"></i><i></i><i></i><i></i><i></i><i class="s"></i><i></i><i class="s"></i><i></i><i class="d"></i><i></i><i class="w"></i><i></i><i class="d"></i><i class="d"></i><i></i><i class="s"></i><i></i><i></i><i class="d"></i><i class="s"></i><i class="d"></i><i></i><i></i><i></i><i class="s"></i><i></i><i class="d"></i><i></i><i></i><i class="s"></i><i></i><i></i><i class="s"></i><i></i><i></i><i></i><i class="s"></i><i></i><i></i><i></i><i></i><i class="s"></i><i></i><i class="s"></i><i></i><i class="d"></i><i></i><i class="w"></i></span></span></div>
+      <h1 class="thin">Agents publish.<br><em>You keep the key.</em></h1>
+      <p class="sub">A recipe for the Morse CLI and SDK. Give an AI agent a wallet of its own and publishing rights for one publication. It publishes without you, every write returns a transaction digest, and one command takes the rights back.</p>
+      <div class="hero__cta"><a class="btn btn-acc" href="https://docs.morsecms.xyz/agent-publishes.html" data-cta="primary">Read the recipe <span aria-hidden="true">↗</span></a><a class="btn btn-ghost" href="#kit" data-cta="secondary">Copy the CLAUDE.md snippet</a></div>
+      <p class="hero__fine">A recipe in the <a href="https://docs.morsecms.xyz/cookbooks.html">Morse cookbooks</a>, not a hosted service. Nothing to sign up for.</p>
+    </div>
+    <div class="leash" aria-label="Example: a PublisherCap on a leash. You issue it, the agent writes with it, you revoke it.">
+      <div class="leash__in">
+        <div class="owner"><small>YOUR MACHINE</small><b>OwnerCap</b><span>issues · revokes</span></div>
+        <svg class="cord" viewBox="0 0 520 548" aria-hidden="true"><path class="c0" d="M188 64 H356 V120"/><path class="c1" d="M188 64 H356 V120"/></svg>
+        <div class="hang">
+          <article class="capc">
+            <div class="capc__hd"><svg aria-hidden="true" width="34" height="34" viewBox="0 0 100 100"><path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="87" r="7" fill="#FF3EA5"/><rect x="30" y="80" width="62" height="14" rx="7" fill="#FF3EA5"/></svg><span class="st"><span class="pill ok">Active</span><span class="pill off" aria-hidden="true">Revoked</span></span></div>
+            <small>PUBLISHERCAP</small>
+            <h3>Write access, for one publication.</h3>
+            <ul>
+              <li><span>Bound to</span><b>the agent's address</b></li>
+              <li><span>Scope</span><b>my-blog</b></li>
+              <li><span>Issued by</span><b>your OwnerCap</b></li>
+            </ul>
+            <div class="da" aria-hidden="true"><i></i><i></i></div>
+          </article>
+        </div>
+        <div class="life">
+          <div class="life__hd"><span>ONE CAP</span><span>THREE COMMANDS</span></div>
+          <ol>
+            <li><code>cap issue</code><span>the agent may write</span></li>
+            <li><code>entry add</code><span>a digest comes back</span></li>
+            <li><code>cap revoke</code><span>its next write aborts</span></li>
+          </ol>
+        </div>
+        <span class="pill sample">Example</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="why" id="why">
+  <div class="wrap">
+    <span class="lab">Why this works at all</span>
+    <h2 class="thin">Most publishing tools need a human <em>at the signup form.</em></h2>
+    <div class="nogate">
+      <div class="ghost">
+        <span class="ghost__cap">WHAT AN AGENT CANNOT DO</span>
+        <p><s>Click through signup</s><small>A PERSON</small></p>
+        <p><s>Create an API key</s><small>A CONSOLE</small></p>
+        <p><s>Paste it somewhere</s><small>A SECRET</small></p>
+        <span class="ghost__btn"><s>Continue</s></span>
+      </div>
+      <span class="nogate__to" aria-hidden="true"><i></i><i></i></span>
+      <ol class="three">
+        <li><span class="n">01</span><b>A wallet</b><span class="d">The agent's own, funded with a little SUI for gas and WAL for storage.</span></li>
+        <li><span class="n">02</span><b>A cap</b><span class="d">A PublisherCap: write access to one publication, issued by you.</span></li>
+        <li><span class="n">03</span><b>The docs</b><span class="d">llms.txt, llms-full.txt and a Markdown twin of every page.</span></li>
+      </ol>
+    </div>
+    <p class="thin after">Morse has no signup. <em>So an agent can do the whole job from a shell.</em></p>
+  </div>
+</section>
+
+<section class="sec" id="kit">
+  <div class="wrap">
+    <div class="sec__head"><span class="lab">The handover</span><h2 class="thin">Treat it like a contractor.<br><em>Hand it three things.</em></h2><p class="lead">A rules file so it starts from the docs, a shell with its own key, and a job described by its outcome. All three come from the recipe; copy them and change the names.</p></div>
+    <div class="glass kit" data-tabs>
+      <div class="kit__bar">
+        <div class="kit__tabs" role="tablist" aria-label="What you hand the agent">
+          <button class="ftab is-on" type="button" role="tab" id="kt-1" aria-controls="kp-1" aria-selected="true"><i aria-hidden="true"></i>CLAUDE.md</button>
+          <button class="ftab" type="button" role="tab" id="kt-2" aria-controls="kp-2" aria-selected="false" tabindex="-1"><i aria-hidden="true"></i>its shell</button>
+          <button class="ftab" type="button" role="tab" id="kt-3" aria-controls="kp-3" aria-selected="false" tabindex="-1"><i aria-hidden="true"></i>its job</button>
+        </div>
+        <button class="copy" type="button" data-copy aria-live="polite">Copy</button>
+      </div>
+      <div class="kit__pane" role="tabpanel" id="kp-1" aria-labelledby="kt-1" tabindex="0">
+<pre><span class="c"># Morse</span>
+This project publishes to a Morse publication on Sui
+testnet. <mark>Before using the Morse CLI or SDK, read</mark>
+<mark>https://docs.morsecms.xyz/llms-full.txt</mark> (or<sup>01</sup>
+https://docs.morsecms.xyz/llms.txt for the index and
+fetch pages as .md).
+
+Rules
+- Use the CLI non-interactively:
+  <mark>`morse --json -q --yes ...`</mark><sup>02</sup>
+- <mark>Never run `account export`, never print</mark>
+  <mark>MORSE_PRIVATE_KEY.</mark><sup>03</sup>
+- New post:
+  `morse entry add &lt;name&gt; --file &lt;path&gt; --epochs 30`
+- Edit an existing post:
+  `morse revision publish-direct &lt;entryId&gt;
+  --file &lt;path&gt; --epochs 30`
+- <mark>Look up entry ids in morse-map.json</mark>; update it<sup>04</sup>
+  after every add.
+- Read back with `morse entry read &lt;entryId&gt;`.</pre>
+        <ul class="notes">
+          <li><span class="n">01</span><div><b>Docs before commands.</b><span class="d">The first lines send the agent to the full docs in one file, so it works from what is current and not from a guess.</span></div></li>
+          <li><span class="n">02</span><div><b>Never at a prompt.</b><span class="d"><code>--json</code> gives it something to parse, <code>-q</code> removes progress output, <code>--yes</code> removes confirmations.</span></div></li>
+          <li><span class="n">03</span><div><b>The key stays unprinted.</b><span class="d">The agent may not export its key or print it into a log.</span></div></li>
+          <li><span class="n">04</span><div><b>Ids come from a map.</b><span class="d">A small file in the repo ties each post to its entry id, so the agent never guesses one.</span></div></li>
+        </ul>
+      </div>
+      <div class="kit__pane" role="tabpanel" id="kp-2" aria-labelledby="kt-2" tabindex="0" hidden>
+<pre><span class="c"># the agent's shell: its own key, never yours</span>
+export <mark>MORSE_PRIVATE_KEY</mark>=suiprivkey1...<sup>01</sup>
+export <mark>MORSE_NETWORK</mark>=testnet<sup>02</sup>
+export <mark>MORSE_PUBLICATION</mark>=0xYOUR_PUBLICATION_ID<sup>03</sup>
+export MORSE_COLLECTION=posts</pre>
+        <ul class="notes">
+          <li><span class="n">01</span><div><b>The agent wallet, not yours.</b><span class="d">A fresh wallet with a small balance: SUI for gas, WAL for storage. Days of budget, not months. The owner key stays on your machine.</span></div></li>
+          <li><span class="n">02</span><div><b>Testnet first.</b><span class="d">Walrus Mainnet is a deliberate choice: there is no faucet, and SUI and WAL are real money there.</span></div></li>
+          <li><span class="n">03</span><div><b>One publication.</b><span class="d">The cap is bound to this publication and to nothing else you own.</span></div></li>
+        </ul>
+      </div>
+      <div class="kit__pane" role="tabpanel" id="kp-3" aria-labelledby="kt-3" tabindex="0" hidden>
+<pre><span class="c nc"># the example prompt from the recipe</span>
+<mark>Every Friday, summarise the week's merged pull requests</mark><sup>01</sup>
+in this repo as a short Markdown post under
+content/posts/YYYY-MM-DD-weekly.md, then publish it to
+Morse as a new entry. <mark>Print the entry id and the Sui</mark>
+<mark>transaction digest when done.</mark><sup>02</sup></pre>
+        <ul class="notes">
+          <li><span class="n">01</span><div><b>Describe the outcome.</b><span class="d">The agent has the docs, so the prompt says what to produce, not which commands to type.</span></div></li>
+          <li><span class="n">02</span><div><b>Ask for the proof.</b><span class="d">The entry id and the digest are what you check afterwards.</span></div></li>
+          <li><span class="n">03</span><div><b>Review the first few.</b><span class="d">The recipe's own advice: read its first posts before you stop reviewing, and do not assume it read the docs.</span></div></li>
+        </ul>
+      </div>
+    </div>
+    <p class="fine">The rules file works as <code>CLAUDE.md</code>, <code>AGENTS.md</code> or Cursor rules. Text from the recipe, wrapped to fit; the wording is unchanged.</p>
+  </div>
+</section>
+
+<section class="sec flush" id="run">
+  <div class="wrap">
+    <div class="sec__head"><span class="lab">The commands</span><h2 class="thin">Two machines. <em>Two keys.</em></h2><p class="lead">Five steps, in order. Three run on your machine with the owner key. Two run in the agent's shell with a key that can publish to one publication and do nothing else.</p></div>
+    <div class="lanes">
+      <div class="lanes__hd" aria-hidden="true"><div><i class="keydot"></i>YOUR MACHINE<small>OWNER KEY</small></div><div><i class="keydot a"></i>THE AGENT'S SHELL<small>ITS OWN KEY</small></div></div>
+      <ol>
+        <li class="step r1" data-n="01"><span class="pill who">You</span><p><b>Issue a cap</b> to the agent's address. It arrives in the same transaction; there is nothing to hand over.</p>
+<pre><span class="p">$</span> morse cap issue 0xAGENT_WALLET_ADDRESS</pre></li>
+        <li class="idle r1" aria-hidden="true">NO CAP YET · IT CANNOT WRITE</li>
+        <li class="step it r2" data-n="02"><span class="pill lift who">The agent</span><p><b>Check the setup.</b> Same context you have, with no keystore and no prompts.</p>
+<pre><span class="p">$</span> morse --json -q --yes status</pre></li>
+        <li class="idle l r23" aria-hidden="true">YOU ARE NOT IN THE LOOP · THE OWNER KEY STAYS HOME</li>
+        <li class="step it r3" data-n="03"><span class="pill lift who">The agent</span><p><b>Publish.</b> JSON comes back for it to read, with the entry id and the transaction digest.</p>
+<pre><span class="p">$</span> morse --json -q --yes entry add \
+    hello-world \
+    --file posts/hello-world.md \
+    --epochs 30</pre></li>
+        <li class="step r4" data-n="04"><span class="pill who">You</span><p><b>Look.</b> What exists now, and which caps that address holds, revoked ones included.</p>
+<pre><span class="p">$</span> morse entry list
+<span class="p">$</span> morse cap list 0xAGENT_WALLET_ADDRESS</pre></li>
+        <li class="step r5" data-n="05"><span class="pill who">You</span><p><b>Revoke</b>, without touching the agent. The CLI asks you to confirm first.</p>
+<pre><span class="p">$</span> morse cap revoke 0xAGENT_CAP_ID</pre></li>
+        <li class="idle r45" aria-hidden="true">AFTER STEP 05 · ITS NEXT WRITE ABORTS ON CHAIN</li>
+      </ol>
+    </div>
+    <p class="fine">Commands and flags checked against morse-cli 0.14.0 with <code>--help</code> on 19 Nov 2026. No transaction was sent for this page. Building the agent on the SDK? The same write is <code>addEntryFromBytes</code> with a <code>KeypairAdapter</code> made from the agent's key: see the <a href="https://docs.morsecms.xyz/sdk-workflows.html">SDK cookbooks</a>.</p>
+  </div>
+</section>
+
+<section class="sec" id="audit">
+  <div class="wrap">
+    <div class="sec__head"><span class="lab">Audit and revoke</span><h2 class="thin">The audit log <em>is Sui itself.</em></h2><p class="lead">Every write the agent makes is a transaction signed by its own wallet. You do not ask the agent what it did. You read the record.</p></div>
+    <ol class="txs" aria-label="Example: five transactions in order, each with the wallet that signed it">
+      <li class="tx"><span class="tx__by"><i class="keydot"></i>YOU</span><code>cap issue</code><p>The cap goes to the agent's address.</p><span class="tx__dg">RETURNS · CAP ID, DIGEST</span></li>
+      <li class="tx agent"><span class="tx__by"><i class="keydot a"></i>THE AGENT</span><code>entry add</code><p>A new post. Bytes to Walrus, the record to Sui.</p><span class="tx__dg">RETURNS · ENTRY ID, DIGEST</span></li>
+      <li class="tx agent"><span class="tx__by"><i class="keydot a"></i>THE AGENT</span><code>revision<br>publish-direct</code><p>A correction is a new revision. The earlier one stays on the record.</p><span class="tx__dg">RETURNS · DIGEST</span></li>
+      <li class="tx cut"><span class="tx__by"><i class="keydot"></i>YOU</span><code>cap revoke</code><p>Takes effect on the next transaction.</p><span class="tx__dg">RETURNS · DIGEST</span></li>
+      <li class="tx no"><span class="tx__by"><i class="keydot a"></i>THE AGENT</span><code>entry add</code><p>Aborts on chain. The cap is now a dead object in its wallet.</p><span class="tx__dg">NO RECORD WRITTEN</span></li>
+    </ol>
+    <div class="keeps">
+      <div><b>What it published stays.</b><span>Revoking stops the next write. Nothing the agent already published disappears.</span></div>
+      <div><b>A wrong post is yours to fix.</b><span>Append a revision, or delete the entry, from your own wallet.</span></div>
+      <div><b>One thing to know.</b><span><code>entry add</code> uploads to Walrus before it writes to Sui, so a write attempted after revocation still pays for the upload, then fails.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec flush" id="scope">
+  <div class="wrap two">
+    <div>
+      <div class="sec__head"><span class="lab">Scope</span><h2 class="thin">Two keys.<br><em>Only one leaves.</em></h2><p class="lead">There are no user accounts in Morse. Write access is an object, so what the agent can do is short enough to read.</p></div>
+      <div class="keys">
+        <div class="key"><div class="key__bow"><div><small>STAYS</small><b>OwnerCap</b></div></div><div class="key__blade"><h3>Yours. One per publication.</h3><ul><li>issue and revoke caps</li><li>transfer ownership</li><li>delete</li></ul><span class="key__teeth" aria-hidden="true"><i></i><i></i><i></i></span></div></div>
+        <div class="key a"><div class="key__bow"><div><small>GOES</small><b>PublisherCap</b></div></div><div class="key__blade"><h3>The agent's. Revocable.</h3><ul><li>create collections</li><li>add entries</li><li>append and publish revisions</li><li>decrypt team content</li></ul><span class="key__teeth" aria-hidden="true"><i></i><i></i><i></i><i></i></span></div></div>
+        <p class="else"><b>Everyone else</b> holds nothing and can read public entries. Anyone can list the caps an address holds; there is no private team page.</p>
+      </div>
+    </div>
+    <div>
+      <div class="dd__hd"><span>FROM THE RECIPE · DO, AND DO NOT</span></div>
+      <ul class="dd">
+        <li><b>Give the agent a wallet with days of budget.</b><s>Give it the owner key, or months of funds.</s></li>
+        <li><b>Point it at llms-full.txt.</b><s>Paste commands you have not tested into its prompt.</s></li>
+        <li><b>Keep morse-map.json in the repo.</b><s>Let it guess entry ids.</s></li>
+        <li><b>Review the first few posts before you stop reviewing.</b><s>Assume it read the docs.</s></li>
+      </ul>
+      <p class="fine">A cap holder can also decrypt posts encrypted for the team. Encryption works out of the box on Testnet only; see the limits below.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="recipe">
+  <div class="wrap two" style="align-items:center">
+    <div>
+      <div class="sec__head" style="margin-bottom:0"><span class="lab">What this is</span><h2 class="thin">A recipe.<br><em>Not a service.</em></h2><p class="lead">Nothing here is hosted for you, and no account stands between your agent and your publication. That is the point. It also leaves four things for you to know.</p></div>
+      <ul class="limits">
+        <li><span class="n">01</span><div><b>You run it.</b><span class="d">The recipe is a docs page. The tools are the Morse CLI and SDK, both before 1.0.</span></div></li>
+        <li><span class="n">02</span><div><b>Walrus Mainnet is real money.</b><span class="d">Public content works there, and the SDK's own word for it is usable but young. No faucet. Start on Testnet.</span></div></li>
+        <li><span class="n">03</span><div><b>Storage is a paid lease.</b><span class="d"><code>--epochs</code> sets how long the content is paid for. When the lease ends the content can go offline, while the record on Sui remains.</span></div></li>
+        <li><span class="n">04</span><div><b>Encryption is Testnet-ready only.</b><span class="d">Seal works out of the box on Testnet. On Walrus Mainnet you supply your own Seal key-server credentials.</span></div></li>
+      </ul>
+    </div>
+    <div class="rcardbox">
+      <span class="glow"></span>
+      <div class="rcard">
+        <div class="rcard__hd"><b>Let an AI agent publish</b><span class="pill lift">Docs recipe</span></div>
+        <dl>
+          <div><dt>Time</dt><dd>About 15 minutes</dd></div>
+          <div><dt>Tools</dt><dd>The Morse CLI or SDK</dd></div>
+          <div><dt>Agent</dt><dd>An agent runtime with a shell</dd></div>
+          <div><dt>Wallets</dt><dd>Two. Yours keeps the OwnerCap; the agent's holds a little SUI and WAL.</dd></div>
+          <div><dt>Network</dt><dd>Written for Testnet. Public content also runs on Walrus Mainnet.</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec flush" id="family">
+  <div class="wrap">
+    <div class="bands">
+      <a class="glass band" href="https://agents.morsecms.xyz/" data-link="agents">
+        <span class="brand" style="font-size:22px"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 100 100"><path d="M8 72 V30 H36 V72 H64 V30 H92 V72" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="wm"><span>morse</span><em style="color:#C6F135">agents</em></span></span>
+        <div><b>Want the whole agent, not only its publish step?</b><p>Morse Agents is an open template for developers: memory, publishing, proof and gating built once, with a brain you write. The template is on its way and not shipped yet.</p></div>
+        <span class="btn btn-ghost">Open Morse Agents <span aria-hidden="true">↗</span></span>
+      </a>
+      <a class="glass band" href="https://press.morsecms.xyz/" data-link="press">
+        <span class="brand" style="font-size:22px"><svg aria-hidden="true" width="40" height="40" viewBox="0 0 100 100"><path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><rect x="8" y="80" width="84" height="14" rx="7" fill="#FF5A36"/></svg><span class="wm"><span>morse</span><em style="color:#FF5A36">press</em></span></span>
+        <div><b>Would rather not run an agent yourself?</b><p>Morse Press sets one up from a form. You choose its sources, its brain and its voice, and it runs your journal.</p></div>
+        <span class="btn btn-ghost">Open Morse Press <span aria-hidden="true">↗</span></span>
+      </a>
+    </div>
+    <div class="runs"><span class="lab">Uses</span><span class="pill">morse-cli 0.14</span><span class="pill">morse-sdk 0.12</span><span class="pill">Sui</span><span class="pill">Walrus</span></div>
+  </div>
+</section>
+
+<section class="sec flush" id="faq">
+  <div class="wrap">
+    <div class="sec__head"><span class="lab">Questions</span><h2 class="thin">Before you <em>issue one.</em></h2></div>
+    <div class="faq">
+      <details open><summary>Is Agent Publisher an app I install?</summary><p>No. It is a documented way to do one job with tools that already exist: the Morse CLI and SDK. The recipe is a page in the Morse docs, with a rules file to copy. Nothing is hosted for you.</p></details>
+      <details><summary>Does the agent ever hold my owner key?</summary><p>No. The agent signs with its own wallet and holds one PublisherCap. Issuing and revoking caps needs the OwnerCap, which stays on your machine.</p></details>
+      <details><summary>Which agents does it work with?</summary><p>Any agent runtime with a shell. The rules file works as CLAUDE.md, AGENTS.md or Cursor rules. An agent built in TypeScript can call the SDK directly without shelling out.</p></details>
+      <details><summary>What happens to its posts after I revoke?</summary><p>They stay, with their records. Revocation takes effect on the agent's next transaction. If it published something wrong, you append a revision or delete the entry from your own wallet.</p></details>
+      <details><summary>Does it run on Walrus Mainnet?</summary><p>For public content, yes: pass <code>--network mainnet</code> or set <code>MORSE_NETWORK</code>. The recipe is written for Testnet, and the CLI targets Testnet unless you say otherwise. On Walrus Mainnet every write spends real SUI and WAL, and encrypted posts need your own Seal key-server credentials.</p></details>
+      <details><summary>How long does a post stay readable?</summary><p>As long as its storage is paid for. Walrus storage is a lease counted in epochs, set with <code>--epochs</code> when the agent publishes. When a lease ends the content can go offline; the record of what was published, when and by which wallet remains on Sui.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <span class="glow"></span>
+  <span class="gtile l" aria-hidden="true"><svg aria-hidden="true" width="64" height="64" viewBox="0 0 100 100"><path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="87" r="7" fill="#FF3EA5"/><rect x="30" y="80" width="62" height="14" rx="7" fill="#FF3EA5"/></svg></span><span class="gtile r" aria-hidden="true"><svg aria-hidden="true" width="52" height="52" viewBox="0 0 100 100"><path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="87" r="7" fill="#FF3EA5"/><rect x="30" y="80" width="62" height="14" rx="7" fill="#FF3EA5"/></svg></span>
+  <div class="wrap">
+    <span class="lab">Start</span>
+    <h2 class="thin" style="margin-top:18px">Issue a cap.<br><em>Revoke it any time.</em></h2>
+    <div class="hero__cta"><a class="btn btn-acc" href="https://docs.morsecms.xyz/agent-publishes.html" data-cta="final">Read the recipe <span aria-hidden="true">↗</span></a><a class="btn btn-ghost" href="#kit">Copy the CLAUDE.md snippet</a></div>
+  </div>
+</section>
+</main>
+
+<footer class="foot"><div class="wrap">
+  <a class="brand" href="#top"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 100 100"><path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="87" r="7" fill="#FF3EA5"/><rect x="30" y="80" width="62" height="14" rx="7" fill="#FF3EA5"/></svg><span class="wm"><span>morse</span><em>agent publisher</em></span></a>
+  <nav class="foot__links" aria-label="Footer"><a href="https://www.morsecms.xyz/">Morse kit</a><a href="https://agents.morsecms.xyz/">Agents</a><a href="https://press.morsecms.xyz/">Press</a><a href="https://receipts.morsecms.xyz/">Receipts</a><a href="https://siteimporter.morsecms.xyz/">Site Importer</a><a href="https://docs.morsecms.xyz/">Docs</a><a href="https://github.com/arcadiasystems/morse-dcms">GitHub</a></nav>
+  <p>Morse Agent Publisher: a recipe for letting an agent publish. Part of Morse, built by Arcadia Systems with a grant from the Walrus Foundation. © 2026 · Open source, MIT licence</p>
+</div></footer>
+
+<script>
+(function(){
+  /* Tabs: one tab stop, arrow keys move and select, Home and End jump to the ends.
+     The same behaviour as useTabs in src/base. Every panel stays in the markup. */
+  document.querySelectorAll('[data-tabs]').forEach(function(box){
+    var tabs=[].slice.call(box.querySelectorAll('[role="tab"]'));
+    function select(tab,focus){
+      tabs.forEach(function(t){
+        var on=t===tab;
+        t.classList.toggle('is-on',on);
+        t.setAttribute('aria-selected',on?'true':'false');
+        t.tabIndex=on?0:-1;
+        document.getElementById(t.getAttribute('aria-controls')).hidden=!on;
+      });
+      if(focus){tab.focus();}
+    }
+    tabs.forEach(function(tab,i){
+      tab.addEventListener('click',function(){select(tab,false);});
+      tab.addEventListener('keydown',function(e){
+        var n=tabs.length,to={ArrowRight:(i+1)%n,ArrowDown:(i+1)%n,ArrowLeft:(i-1+n)%n,ArrowUp:(i-1+n)%n,Home:0,End:n-1}[e.key];
+        if(to===undefined){return;}
+        e.preventDefault();select(tabs[to],true);
+      });
+    });
+  });
+  /* Copy: the text of the visible code block, without the note numbers. */
+  document.querySelectorAll('[data-copy]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var scope=btn.closest('[data-tabs]')||btn.closest('[data-copybox]');
+      var pre=scope.querySelector('[role="tabpanel"]:not([hidden]) pre')||scope.querySelector('pre');
+      var copy=pre.cloneNode(true);
+      copy.querySelectorAll('sup,.nc').forEach(function(n){n.remove();});
+      var text=copy.textContent.replace(/^\n+/,'').replace(/[ \t]+$/gm,'')+'\n';
+      if(!navigator.clipboard){btn.textContent='Select and copy';return;}
+      navigator.clipboard.writeText(text).then(function(){
+        btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy';},1600);
+      },function(){btn.textContent='Select and copy';});
+    });
+  });
+})();
+</script>
+</body>
+</html>

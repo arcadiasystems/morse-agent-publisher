@@ -1,0 +1,6 @@
+/* Morse Agent Publisher: the Process Magenta palette. These are the tokens of
+   base.css's contract. Magenta marks what the agent holds or does; bone marks
+   what stays with you. Text on magenta is dark (--on-acc), never bone. Green
+   (--ok) is only for the cap's Active state and the lamp, amber (--warn) only
+   for Example labels. */
+:root{--bg:#0A070A;--bg-rgb:10,7,10;--panel-rgb:17,12,17;--dim:#C4BAC2;--mute:#9B8F99;--acc:#FF3EA5;--acc-rgb:255,62,165;--lift:#FF9BCF;--lift-rgb:255,155,207;--tint-rgb:255,221,238;--em:var(--acc);--on-acc:#0A070A;--ok:#6FD3A6;--warn:#F0C96A}
