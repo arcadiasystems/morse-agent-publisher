@@ -1,0 +1,11 @@
+/* Morse Agent Publisher: the hero's cap on its leash on the share image. The
+   OwnerCap tile, the cord, the PublisherCap pass in its Active state and the
+   three commands, laid out at the size they have on the site and scaled; the
+   panel of commands runs off the lower edge. The publication my-blog is an
+   example, so the card carries the "Example" pill under the OwnerCap tile,
+   inside the square centre crop, in place of the hero's own at the far right. */
+
+.og .glow{opacity:.14}
+.og .leash{position:absolute;left:20px;top:104px;width:520px;height:580px;transform:scale(.98);transform-origin:0 0}
+.og .leash .pill.sample{display:none}
+.og__sample{position:absolute;left:20px;top:222px;font-size:15px;padding:7px 13px}

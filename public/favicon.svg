@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 100 100">
+  <!-- Two drawings of the mark. Up to 20px the round one blurs and its dot and
+       dash thin to a line, so the small one is laid on a 16px grid, whole
+       pixels throughout: the Trace two pixels thick, the dot and the dash two
+       pixels tall. -->
+  <style>
+    .small{display:none}
+    @media (max-width:20px){.full{display:none}.small{display:inline}}
+  </style>
+  <rect width="100" height="100" rx="22" fill="#0A070A"/>
+  <g class="full" transform="translate(18 15.52) scale(0.64)">
+    <path d="M8 60 V18 H36 V60 H64 V18 H92 V60" fill="none" stroke="#F4F2EC" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="15" cy="87" r="7" fill="#FF3EA5"/>
+    <rect x="30" y="80" width="62" height="14" rx="7" fill="#FF3EA5"/>
+  </g>
+  <g class="small" transform="scale(6.25)">
+    <path d="M4 8 V4 H7 V8 H10 V4 H13 V8" fill="none" stroke="#F4F2EC" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+    <rect x="3" y="11" width="2" height="2" fill="#FF3EA5"/>
+    <rect x="6" y="11" width="8" height="2" fill="#FF3EA5"/>
+  </g>
+</svg>
